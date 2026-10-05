@@ -5,6 +5,33 @@ using StatusDePedidos.Api;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(o =>
     o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddOpenApi(options =>
+{
+    options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_0;
+    options.AddDocumentTransformer((doc, _, _) =>
+    {
+        doc.Info.Title = "API StatusDePedidos";
+        doc.Info.Description = "Valida documentos de pedido extraídos por IA e grava no ERP.";
+
+        // Botão "Authorize" no Swagger para o header X-Api-Key
+        doc.Components ??= new();
+        doc.Components.SecuritySchemes = new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>
+        {
+            ["ApiKey"] = new Microsoft.OpenApi.OpenApiSecurityScheme
+            {
+                Type = Microsoft.OpenApi.SecuritySchemeType.ApiKey,
+                Name = "X-Api-Key",
+                In = Microsoft.OpenApi.ParameterLocation.Header,
+                Description = "Chave de API (necessária só se 'ApiKey' estiver configurada)."
+            }
+        };
+        doc.Security = [new Microsoft.OpenApi.OpenApiSecurityRequirement
+        {
+            [new Microsoft.OpenApi.OpenApiSecuritySchemeReference("ApiKey", doc)] = []
+        }];
+        return Task.CompletedTask;
+    });
+});
 builder.Services.AddSingleton<IErpClient, ErpSimulado>();
 builder.Services.AddSingleton<ISugestaoService, SugestaoPorRegras>();
 builder.Services.AddSingleton<ValidadorPedido>();
@@ -15,9 +42,18 @@ var app = builder.Build();
 
 // Chave de API (header X-Api-Key). Se "ApiKey" não estiver configurada, a API fica aberta (somente dev).
 var apiKey = app.Configuration["ApiKey"];
+app.MapOpenApi("/openapi.json");
+app.UseSwaggerUI(o =>
+{
+    o.SwaggerEndpoint("/openapi.json", "API StatusDePedidos");
+    o.RoutePrefix = "swagger";
+});
 app.Use(async (ctx, next) =>
 {
-    if (!string.IsNullOrEmpty(apiKey) && ctx.Request.Path != "/health" && ctx.Request.Headers["X-Api-Key"] != apiKey)
+    var livre = ctx.Request.Path == "/health"
+        || ctx.Request.Path.StartsWithSegments("/openapi.json")
+        || ctx.Request.Path.StartsWithSegments("/swagger");
+    if (!string.IsNullOrEmpty(apiKey) && !livre && ctx.Request.Headers["X-Api-Key"] != apiKey)
     {
         ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
         return;
@@ -25,7 +61,7 @@ app.Use(async (ctx, next) =>
     await next();
 });
 
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/health", () => Results.Ok(new { status = "ok" })).WithName("Health").WithSummary("Verificação de saúde");
 
 // Chamado pelo Power Automate com os campos extraídos pelo Document Intelligence.
 app.MapPost("/pedidos/processar", async (
@@ -71,7 +107,8 @@ app.MapPost("/pedidos/processar", async (
         log.Registrar(Evento(correlationId, doc, "Erro", [], sw, ex.Message));
         return Results.Problem(ex.Message, statusCode: 500);
     }
-});
+})
+.WithName("ProcessarPedido").WithSummary("Processa um documento de pedido").WithDescription("Valida fornecedor, pedido e valores. Grava no ERP se estiver tudo certo; caso contrário devolve as divergências e uma sugestão de ação.");
 
 // Indicadores simples (o dashboard completo fica no Power BI sobre os logs no Fabric).
 app.MapGet("/metricas", (EventoLogger log) =>
@@ -87,7 +124,8 @@ app.MapGet("/metricas", (EventoLogger log) =>
         taxaAutomacao = total == 0 ? 0 : Math.Round((double)ev.Count(e => e.Status == "Gravado") / total, 4),
         duracaoMediaMs = total == 0 ? 0 : Math.Round(ev.Average(e => e.DuracaoMs), 1)
     };
-});
+})
+.WithName("ObterMetricas").WithSummary("Indicadores de processamento").WithDescription("Volume, gravados, divergentes, erros, taxa de automação e duração média.");
 
 app.Run();
 

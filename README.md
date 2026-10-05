@@ -5,7 +5,7 @@ Mini-projeto: API mínima em .NET 10 (chamados de suporte) consumida como ferram
 ## Rodar
 ```
 cd ChamadosApi
-dotnet run --urls http://localhost:5080
+dotnet run --urls http://localhost:5092
 ```
 - `GET /chamados[?status=]`, `GET /chamados/{id}`, `POST /chamados`
 - OpenAPI 3.0 em `/openapi.json`
@@ -15,3 +15,7 @@ dotnet run --urls http://localhost:5080
 1. Exponha a API: `devtunnel host -p 5080 --allow-anonymous`
 2. Baixe `<URL>/openapi.json` e confirme que `servers.url` aponta para a URL pública.
 3. No agente: Tools → Add a tool → New tool → REST API → upload do JSON.
+
+## Swagger
+ - incluso documentação swagger http://localhost:5092/swagger
+ 

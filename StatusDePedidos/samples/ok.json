@@ -1,0 +1,1 @@
+{"messageId":"m1","remetenteEmail":"f@a.com","fornecedor":{"nome":"Alfa Ltda","cnpj":"11.222.333/0001-81"},"numeroPedido":"PED-1001","valorTotal":1500.00,"itens":[{"descricao":"Cabo","quantidade":10,"valorUnitario":150}],"confiancaExtracao":0.97}

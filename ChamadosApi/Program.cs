@@ -20,12 +20,18 @@ builder.Services.AddSingleton<ChamadoStore>();
 var app = builder.Build();
 
 app.MapOpenApi("/openapi.json");
+app.UseSwaggerUI(o =>
+{
+    o.SwaggerEndpoint("/openapi.json", "API de Chamados");
+    o.RoutePrefix = "swagger";
+});
 
 // Chave simples de API (opcional): defina "ApiKey" em appsettings para exigir o header X-Api-Key
 var apiKey = app.Configuration["ApiKey"];
 app.Use(async (ctx, next) =>
 {
     if (!string.IsNullOrEmpty(apiKey) && !ctx.Request.Path.StartsWithSegments("/openapi.json")
+        && !ctx.Request.Path.StartsWithSegments("/swagger")
         && ctx.Request.Headers["X-Api-Key"] != apiKey)
     {
         ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;

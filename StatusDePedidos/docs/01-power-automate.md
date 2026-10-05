@@ -27,7 +27,7 @@ Tipo: fluxo de nuvem automatizado. Nome sugerido: `StatusDePedidos - Processar e
    }
    ```
    O `messageId` inclui o nome do anexo para que um e-mail com vários anexos gere processamentos distintos.
-5. **HTTP**: `POST https://<sua-api>/pedidos/processar`, header `Content-Type: application/json` e `X-Api-Key: <segredo>` (guarde a chave em variável de ambiente da solução, não no fluxo). Configure *Política de nova tentativa* para 3 tentativas exponenciais (a API é idempotente).
+5. **HTTP**: `POST https://<sua-api>/pedidos/processar`, header `Content-Type: application/json` e **Autenticação = Active Directory OAuth** (client credentials; veja [00-oauth2-entra-id.md](00-oauth2-entra-id.md)). Client ID e Secret ficam em variáveis de ambiente da solução, não no fluxo. Configure *Política de nova tentativa* para 3 tentativas exponenciais (a API é idempotente).
 6. **Analisar JSON** da resposta com o esquema do `ResultadoProcessamento` (`status`, `numeroPedido`, `divergencias[]`, `sugestaoAcao`, `responsavelEmail`).
 7. **Condição**: `status` é igual a `Divergente`?
    - **Sim**: ação *Postar cartão adaptável e aguardar resposta* no Teams (usuário = `responsavelEmail`):

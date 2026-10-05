@@ -23,9 +23,9 @@ Fabric (Lakehouse) ──► Power BI: volume, taxa de automação, erros
 
 | Endpoint | Uso |
 |---|---|
-| `POST /pedidos/processar` | Recebe os campos extraídos, valida, grava no ERP ou devolve divergências + sugestão |
-| `GET /metricas` | Volume, gravados, divergentes, erros, taxa de automação |
-| `GET /health` | Verificação de saúde (sem chave) |
+| `POST /pedidos/processar` | 🔒 role `Pedidos.Processar`. Recebe os campos extraídos, valida, grava no ERP ou devolve divergências + sugestão |
+| `GET /metricas` | 🔒 role `Pedidos.Ler` ou `Pedidos.Processar`. Volume, gravados, divergentes, erros, taxa de automação |
+| `GET /health` | Verificação de saúde (público) |
 
 Regras de validação (em `Services.cs`, `ValidadorPedido`): confiança da extração, fornecedor (CNPJ cadastrado), pedido (existe e pertence ao fornecedor), valor (soma dos itens = total; total = valor do pedido no ERP, com tolerância).
 
@@ -35,6 +35,7 @@ Idempotência: o mesmo `messageId` não é gravado duas vezes (retorna `Duplicad
 ```
 cd src/StatusDePedidos.Api
 dotnet run --urls http://localhost:5090
+# em Development sem Auth:Authority a API fica aberta; com autenticação, envie -H "Authorization: Bearer <token>"
 curl -X POST localhost:5090/pedidos/processar -H "Content-Type: application/json" -d @../../samples/ok.json
 curl localhost:5090/metricas
 ```
@@ -43,7 +44,8 @@ Payloads de exemplo em [samples/](samples/): `ok.json`, `divergente_valor.json`,
 ### Configuração (appsettings / variáveis de ambiente)
 | Chave | Padrão | Descrição |
 |---|---|---|
-| `ApiKey` | vazio (aberta) | Se definida, exige o header `X-Api-Key`. Use user-secrets / Key Vault |
+| `Auth:Authority` | vazio | Emissor OAuth2 (`https://login.microsoftonline.com/{tenant}/v2.0`). Obrigatório fora de Development |
+| `Auth:Audience` | vazio | Application ID URI da API (ex.: `api://statusdepedidos`) |
 | `Validacao:ToleranciaValor` | 0.01 | Diferença de valor aceita |
 | `Validacao:ConfiancaMinima` | 0.80 | Abaixo disso, vira divergência |
 | `Notificacao:ResponsavelPadrao` | vazio | Destinatário quando o ERP não indica responsável |
@@ -57,6 +59,7 @@ Payloads de exemplo em [samples/](samples/): `ok.json`, `divergente_valor.json`,
 
 ## Montagem das demais peças
 Passo a passo em [docs/](docs/):
+0. [00-oauth2-entra-id.md](docs/00-oauth2-entra-id.md): autenticação OAuth2 (Entra ID), roles e como obter token
 1. [01-power-automate.md](docs/01-power-automate.md): fluxo do e-mail até a API e o Teams
 2. [02-document-intelligence.md](docs/02-document-intelligence.md): modelo de extração
 3. [03-fabric-powerbi.md](docs/03-fabric-powerbi.md): logs, modelo semântico e medidas

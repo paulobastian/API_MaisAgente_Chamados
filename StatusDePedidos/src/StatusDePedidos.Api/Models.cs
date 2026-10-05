@@ -39,3 +39,16 @@ public record EventoLog(
     string? Regras,
     long DuracaoMs,
     string? Erro);
+
+/// <summary>App roles definidos no app registration da API (Entra ID → App roles).</summary>
+public static class Roles
+{
+    public const string Processar = "Pedidos.Processar";
+    public const string Ler = "Pedidos.Ler";
+}
+
+public static class Politicas
+{
+    public const string Processar = "Processar";
+    public const string Ler = "Ler";
+}
